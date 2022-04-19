@@ -1,0 +1,56 @@
+[package]
+name = "simple_clustering"
+version = "0.1.0"
+edition = "2021"
+exclude = ["gfx", ".github"]
+description = "Implementations of image clustering and segmentation algorithms such as SLIC and SNIC."
+homepage = "https://github.com/okaneco/simple_clustering"
+repository = "https://github.com/okaneco/simple_clustering"
+readme = "README.md"
+
+keywords = ["clustering", "superpixel", "image", "segmentation", "segments"]
+categories = ["computer-vision", "multimedia::images", "mathematics"]
+license = "MIT OR Apache-2.0"
+
+[features]
+# Use default-features=false if using as a library
+default = ["app"]
+
+# Features required for building the binary
+app = [
+    "clap",
+    "image",
+]
+
+[dependencies.clap]
+version = "3.1.18"
+default-features = false
+features = ["std", "suggestions", "derive"]
+optional = true
+
+[dependencies.fxhash]
+version = "0.2.1"
+default-features = false
+
+[dependencies.image]
+version = "0.24.2"
+default-features = false
+features = ["jpeg", "png"]
+optional = true
+
+[dependencies.num-traits]
+version = "0.2.15"
+default-features = false
+
+[dependencies.palette]
+version = "0.6"
+default-features = false
+features = ["std"]
+
+[profile.release]
+strip = true
+
+[package.metadata.docs.rs]
+no-default-features = true
+features = [""]
+targets = []
