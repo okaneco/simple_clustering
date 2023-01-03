@@ -186,33 +186,33 @@ where
         // pixels with the lowest distance measure
         for (center_index, center) in clusters.iter().enumerate() {
             for y in center.y.saturating_sub(s)..center.y.saturating_add(s).min(height) {
-                for x in center.x.saturating_sub(s)..center.x.saturating_add(s).min(width) {
-                    let idx = usize::try_from(
-                        u64::from(y)
-                            .saturating_mul(u64::from(width))
-                            .saturating_add(u64::from(x)),
-                    )
-                    .or(Err("Index out of bounds for finding new neighbors"))?;
-                    let color = *image.get(idx).ok_or("Image index out of bounds")?;
+                let x_start = center.x.saturating_sub(s);
+                let x_end = center.x.saturating_add(s).min(width);
+                let row_start = u64::from(y).saturating_mul(u64::from(width));
 
-                    let distance = distance_s(
-                        m_s_term,
-                        distance_lab(color, center.data),
-                        distance_xy(
-                            (f64::from(x), f64::from(y)),
-                            (f64::from(center.x), f64::from(center.y)),
-                        ),
-                    );
+                // (2023/01)WOULDBENICE: Try chunks_exact, attempted it here but clusters
+                // had worse results compared to current version indicating probable errors
+                // in implementation
+                for (x, idx) in (x_start..x_end).zip(
+                    row_start.saturating_add(u64::from(center.x.saturating_sub(s)))
+                        ..row_start.saturating_add(u64::from(x_end)),
+                ) {
+                    let idx = usize::try_from(idx)
+                        .or(Err("Index out of bounds for finding new neighbors"))?;
+                    if idx < image.len() && idx < info.distances.len() && idx < info.labels.len() {
+                        let color = image[idx];
+                        let distance = distance_s(
+                            m_s_term,
+                            distance_lab(color, center.data),
+                            distance_xy(
+                                (f64::from(x), f64::from(y)),
+                                (f64::from(center.x), f64::from(center.y)),
+                            ),
+                        );
 
-                    if idx < info.distances.len() && idx < info.labels.len() {
-                        let info_distance = info
-                            .distances
-                            .get_mut(idx)
-                            .ok_or("Distance index out of bounds")?;
-                        if distance < *info_distance {
-                            *info_distance = distance;
-                            *info.labels.get_mut(idx).ok_or("Info index out of bounds")? =
-                                center_index;
+                        if distance < info.distances[idx] {
+                            info.distances[idx] = distance;
+                            info.labels[idx] = center_index;
                         }
                     }
                 }
@@ -220,29 +220,18 @@ where
         }
 
         // Compute new centers and update
-        for y in 0..height {
-            for x in 0..width {
-                let idx = usize::try_from(
-                    u64::from(y)
-                        .saturating_mul(u64::from(width))
-                        .saturating_add(u64::from(x)),
-                )
-                .or(Err("Invalid update index"))?;
-
-                if idx < image.len() && idx < info.labels.len() {
-                    let color = *image.get(idx).ok_or("Image index out of bounds")?;
-                    let index = *info
-                        .labels
-                        .get(idx)
-                        .ok_or("Info update index out of bounds")?;
-                    if let Some(update) = updates.get_mut(index) {
-                        update.data += color;
-                        update.x += f64::from(x);
-                        update.y += f64::from(y);
-                        update.count += 1.0;
-                    }
-                } else {
-                    return Err(ScError::General("Update index out of bounds"));
+        let width_usize = usize::try_from(width).or(Err("Could not convert width to usize"))?;
+        for (y, (row, info_labels)) in image
+            .chunks_exact(width_usize)
+            .zip(info.labels.chunks_exact(width_usize))
+            .enumerate()
+        {
+            for (x, (&color, &info_label)) in row.iter().zip(info_labels).enumerate() {
+                if let Some(update) = updates.get_mut(info_label) {
+                    update.data += color;
+                    update.x += x as f64;
+                    update.y += y as f64;
+                    update.count += 1.0;
                 }
             }
         }
@@ -281,6 +270,7 @@ fn enforce_connectivity(
     let mut new_labels = Vec::new();
     new_labels.try_reserve_exact(labels.len())?;
     new_labels.extend((0..labels.len()).map(|_| usize::MAX));
+    let new_labels = new_labels.as_mut_slice();
 
     // This will be reused for searching each superpixel cluster.
     // For now, the size of the queue is 8 superpixels to start.
@@ -297,15 +287,12 @@ fn enforce_connectivity(
     let mut neighbor_label = 0;
     let mut new_label = 0_usize;
 
-    for y in 0..height {
-        for x in 0..width {
-            let idx_usize = usize::try_from(
-                u64::from(y)
-                    .saturating_mul(u64::from(width))
-                    .saturating_add(u64::from(x)),
-            )
-            .or(Err("Invalid connectivity index"))?;
-            let old_label = *labels.get(idx_usize).ok_or("Could not get old label")?;
+    let width_usize = usize::try_from(width).or(Err(
+        "Could not convert width to usize in enforce_connectivity",
+    ))?;
+    for (y, label_row) in labels.chunks_exact(width_usize).enumerate() {
+        for (x, &old_label) in label_row.iter().enumerate() {
+            let idx_usize = y.saturating_mul(width_usize).saturating_add(x);
 
             // If no assigned label, assign current_label
             if new_labels.get(idx_usize) == Some(&usize::MAX) {
@@ -318,8 +305,9 @@ fn enforce_connectivity(
                 // be used to label the cluster if the current label is too
                 // small.
                 for &neighbor in &neighbors {
-                    let neighbor_x = i64::from(x) + neighbor.0;
-                    let neighbor_y = i64::from(y) + neighbor.1;
+                    // `x` and `y` went from u32->usize->i64
+                    let neighbor_x = (x as i64) + neighbor.0;
+                    let neighbor_y = (y as i64) + neighbor.1;
                     if let Some(l) =
                         get_in_bounds(width_i, height_i, neighbor_x, neighbor_y, &new_labels)
                     {
@@ -333,7 +321,7 @@ fn enforce_connectivity(
                 // same label. The members go into a queue so they can be
                 // reassigned a neighboring label if it's a disjoint cluster.
                 label_queue.clear();
-                label_queue.push((i64::from(x), i64::from(y)));
+                label_queue.push(((x as i64), (y as i64)));
                 let mut label_queue_idx = 0;
                 let mut label_count = 1_usize;
 
@@ -347,7 +335,7 @@ fn enforce_connectivity(
 
                         if let (Some(old_visit_label), Some(new_visit_label)) = (
                             get_in_bounds(width_i, height_i, new_vx, new_vy, labels),
-                            get_mut_in_bounds(width_i, height_i, new_vx, new_vy, &mut new_labels),
+                            get_mut_in_bounds(width_i, height_i, new_vx, new_vy, new_labels),
                         ) {
                             // If new label is unassigned and matches old_label, assign it the current cluster
                             if *old_visit_label == old_label && *new_visit_label == usize::MAX {
@@ -369,7 +357,7 @@ fn enforce_connectivity(
                 // superpixel size.
                 if label_count <= cluster_threshold {
                     for &(l_x, l_y) in &label_queue {
-                        *get_mut_in_bounds(width_i, height_i, l_x, l_y, &mut new_labels)
+                        *get_mut_in_bounds(width_i, height_i, l_x, l_y, new_labels)
                             .ok_or("New label index out of bounds")? = neighbor_label;
                     }
                     continue;
