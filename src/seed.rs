@@ -17,8 +17,6 @@ pub fn init_seeds<T: Copy>(
     seeds: &mut Vec<Superpixel<T>>,
 ) -> Result<(), ScError> {
     seeds.clear();
-    let width = width;
-    let height = height;
     let s = s;
     let half_s = div_ceil(s, 2);
     let mut x_seeds = div_ceil(width, s);

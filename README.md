@@ -1,5 +1,5 @@
 # simple_clustering
-[![Build Status](https://img.shields.io/github/workflow/status/okaneco/simple_clustering/Rust%20CI)](https://github.com/okaneco/simple_clustering)
+[![Build Status](https://github.com/okaneco/simple_clustering/workflows/Rust%20CI/badge.svg)](https://github.com/okaneco/simple_clustering)
 [![Crates.io](https://img.shields.io/crates/v/simple_clustering.svg)](https://crates.io/crates/simple_clustering)
 [![Docs.rs](https://docs.rs/simple_clustering/badge.svg)](https://docs.rs/simple_clustering)
 

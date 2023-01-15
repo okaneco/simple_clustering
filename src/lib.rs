@@ -170,8 +170,8 @@ where
 /// Checks if the index is in bounds and returns a reference to the data at that
 /// point if it exists.
 #[inline]
-fn get_in_bounds<T>(width: i64, height: i64, x: i64, y: i64, image: &[T]) -> Option<&T> {
-    if (0..width).contains(&x) && (0..height).contains(&y) {
+fn get_in_bounds<T>(width: i64, _height: i64, x: i64, y: i64, image: &[T]) -> Option<&T> {
+    if (0..width).contains(&x) {
         let i = u64::try_from(y)
             .ok()?
             .checked_mul(u64::try_from(width).ok()?)?
@@ -188,12 +188,12 @@ fn get_in_bounds<T>(width: i64, height: i64, x: i64, y: i64, image: &[T]) -> Opt
 #[inline]
 fn get_mut_in_bounds<T>(
     width: i64,
-    height: i64,
+    _height: i64,
     x: i64,
     y: i64,
     image: &mut [T],
 ) -> Option<&mut T> {
-    if (0..width).contains(&x) && (0..height).contains(&y) {
+    if (0..width).contains(&x) {
         let i = u64::try_from(y)
             .ok()?
             .checked_mul(u64::try_from(width).ok()?)?

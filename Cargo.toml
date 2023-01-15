@@ -1,6 +1,6 @@
 [package]
 name = "simple_clustering"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 exclude = ["gfx", ".github"]
 description = "Implementations of image clustering and segmentation algorithms such as SLIC and SNIC."
