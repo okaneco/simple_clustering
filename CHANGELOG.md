@@ -17,6 +17,6 @@ Improved SLIC calculation speed by ~15-20% after refactoring calculation loop.
 ## Version 0.1.0 - 2022-04
 - Initial Commit
 
-[documentation]: https://docs.rs/simple_clustering
-[1]: https://github.com/okaneco/simple_clustering/pull/1
 [3]: https://github.com/okaneco/simple_clustering/pull/3
+[1]: https://github.com/okaneco/simple_clustering/pull/1
+[documentation]: https://docs.rs/simple_clustering

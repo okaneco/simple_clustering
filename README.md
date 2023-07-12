@@ -17,7 +17,7 @@ can be found at https://github.com/okaneco/simple_clustering/releases.
 
 ```toml
 [dependencies.simple_clustering]
-version = "0.1"
+version = "0.2"
 default-features = false
 ```
 

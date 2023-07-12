@@ -8,7 +8,7 @@ use crate::{
 };
 
 use num_traits::ToPrimitive;
-use palette::{white_point::D65, FromColor, Lab, Pixel, Srgb};
+use palette::{cast, FromColor, Lab, Srgb};
 
 /// Struct used for accumulating and calculating superpixel clusters in SNIC.
 #[derive(Debug, Clone, Copy)]
@@ -62,7 +62,7 @@ pub fn snic_from_bytes(
     {
         return Err(ScError::MismatchedSnicBuffer);
     }
-    let input_buffer = Srgb::from_raw_slice(image);
+    let input_buffer = cast::from_component_slice::<Srgb<u8>>(image);
     let mut input_lab: Vec<Lab<_, f64>> = Vec::new();
     input_lab.try_reserve_exact(input_buffer.len())?;
     input_lab.extend(
@@ -85,12 +85,12 @@ pub fn snic_from_bytes(
 /// *Achanta, R., & Süsstrunk, S. Superpixels and polygons using simple
 /// non-iterative clustering. Proceedings of the IEEE Conference on Computer Vision
 /// and Pattern Recognition, 2017.*
-pub fn snic(
+pub fn snic<Wp>(
     k: u32,
     m: u8,
     width: u32,
     height: u32,
-    image: &[Lab<D65, f64>],
+    image: &[Lab<Wp, f64>],
 ) -> Result<Vec<usize>, ScError> {
     let width_i = i64::from(width);
     let height_i = i64::from(height);
@@ -136,7 +136,7 @@ pub fn snic(
     labels.extend((0..image.len()).map(|_| 0_usize));
 
     // Leave the first entry vacant since label k starts at 1
-    let mut updates: Vec<SnicUpdate<Lab<D65, f64>>> = Vec::new();
+    let mut updates: Vec<SnicUpdate<Lab<Wp, f64>>> = Vec::new();
     updates.try_reserve_exact(clusters.len().saturating_add(1))?;
     updates.extend((0..=clusters.len()).map(|_| SnicUpdate::new()));
 
