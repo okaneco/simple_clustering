@@ -17,14 +17,14 @@
 //! ### SNIC
 //!
 //! ```
-//! use palette::{FromColor, Lab, Pixel, Srgb};
+//! use palette::{cast, FromColor, Lab, Srgb};
 //! use simple_clustering::snic;
 //!
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! # let (width, height) = (1, 3);
 //! # let image = [0u8, 0, 0, 127, 127, 127, 255, 255, 255];
 //! # let (k, m) = (1, 10);
-//! let lab_buffer: Vec<Lab<_, f64>> = Srgb::from_raw_slice(&image)
+//! let lab_buffer: Vec<Lab<_, f64>> = cast::from_component_slice::<Srgb<u8>>(&image)
 //!     .iter()
 //!     .map(|&c| Lab::from_color(c.into_format()))
 //!     .collect();
@@ -37,14 +37,14 @@
 //! ### SLIC
 //!
 //! ```
-//! use palette::{FromColor, Lab, Pixel, Srgb};
+//! use palette::{cast, FromColor, Lab, Srgb};
 //! use simple_clustering::slic;
 //!
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! # let (width, height) = (1, 3);
 //! # let image = [0u8, 0, 0, 127, 127, 127, 255, 255, 255];
 //! # let (k, m) = (1, 10);
-//! let lab_buffer: Vec<Lab<_, f64>> = Srgb::from_raw_slice(&image)
+//! let lab_buffer: Vec<Lab<_, f64>> = cast::from_component_slice::<Srgb<u8>>(&image)
 //!     .iter()
 //!     .map(|&c| Lab::from_color(c.into_format()))
 //!     .collect();
@@ -60,7 +60,7 @@
 //! around those segments.
 //!
 //! ```
-//! # use palette::{FromColor, Lab, Pixel, Srgb};
+//! # use palette::{cast, FromColor, Lab, Srgb};
 //! # use simple_clustering::snic;
 //! use simple_clustering::image::{mean_colors, segment_contours};
 //!
@@ -68,7 +68,7 @@
 //! # let (width, height) = (1, 3);
 //! # let image = [0u8, 0, 0, 127, 127, 127, 255, 255, 255];
 //! # let (k, m) = (1, 10);
-//! # let lab_buffer: Vec<Lab<_, f64>> = Srgb::from_raw_slice(&image)
+//! # let lab_buffer: Vec<Lab<_, f64>> = cast::from_component_slice::<Srgb<u8>>(&image)
 //! #    .iter()
 //! #    .map(|&c| Lab::from_color(c.into_format()))
 //! #    .collect();
@@ -98,7 +98,7 @@
 )]
 
 use num_traits::{Float, One, Unsigned, Zero};
-use palette::{white_point::WhitePoint, FloatComponent, Lab};
+use palette::Lab;
 use std::ops::{Add, Div, Rem};
 
 pub mod error;
@@ -124,21 +124,26 @@ fn calculate_grid_interval(width: u32, height: u32, superpixels: u32) -> f64 {
 #[inline]
 fn distance_lab<Wp, T>(lhs: Lab<Wp, T>, rhs: Lab<Wp, T>) -> T
 where
-    Wp: WhitePoint,
-    T: FloatComponent,
+    T: Float,
 {
     (rhs.l - lhs.l).powi(2) + (rhs.a - lhs.a).powi(2) + (rhs.b - lhs.b).powi(2)
 }
 
 /// Calculate the distance between two two-dimensional points.
 #[inline]
-fn distance_xy<T: Float>(lhs: (T, T), rhs: (T, T)) -> T {
+fn distance_xy<T>(lhs: (T, T), rhs: (T, T)) -> T
+where
+    T: Float,
+{
     (rhs.0 - lhs.0).powi(2) + (rhs.1 - lhs.1).powi(2)
 }
 
 /// Calculate the `s` distance.
 #[inline]
-fn distance_s<T: Float>(m_div_s: T, d_lab: T, d_xy: T) -> T {
+fn distance_s<T>(m_div_s: T, d_lab: T, d_xy: T) -> T
+where
+    T: core::ops::Add<Output = T> + core::ops::Mul<Output = T>,
+{
     d_lab + m_div_s * d_xy
 }
 

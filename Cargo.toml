@@ -1,6 +1,6 @@
 [package]
 name = "simple_clustering"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2021"
 exclude = ["gfx", ".github"]
 description = "Implementations of image clustering and segmentation algorithms such as SLIC and SNIC."
@@ -33,7 +33,7 @@ version = "0.2.1"
 default-features = false
 
 [dependencies.image]
-version = "0.24.2"
+version = "0.24.6"
 default-features = false
 features = ["jpeg", "png"]
 optional = true
@@ -41,13 +41,15 @@ optional = true
 [dependencies.num-traits]
 version = "0.2.15"
 default-features = false
+features = ["std"]
 
 [dependencies.palette]
-version = "0.6"
+version = "0.7.2"
 default-features = false
 features = ["std"]
 
 [profile.release]
+codegen-units = 1
 strip = true
 
 [package.metadata.docs.rs]

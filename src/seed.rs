@@ -2,8 +2,8 @@
 use crate::error::{ScError, SeedErrorKind};
 use crate::{distance_lab, div_ceil, get_in_bounds, Superpixel};
 
-use num_traits::ToPrimitive;
-use palette::{white_point::WhitePoint, FloatComponent, Lab};
+use num_traits::{Float, FromPrimitive, ToPrimitive};
+use palette::Lab;
 
 /// Initialize the superpixel seed centers.
 ///
@@ -103,10 +103,10 @@ pub fn perturb<Wp, T>(
     image: &[Lab<Wp, T>],
 ) -> Result<(), ScError>
 where
-    Wp: WhitePoint,
-    T: FloatComponent,
+    T: Float + FromPrimitive,
+    Lab<Wp, T>: Default,
 {
-    let mut min = T::infinity();
+    let mut min = T::from_f64(f64::INFINITY).unwrap();
     let default = Lab::<Wp, T>::default();
     let sp_x = i64::from(seed.x);
     let sp_y = i64::from(seed.y);

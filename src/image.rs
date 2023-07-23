@@ -1,33 +1,33 @@
 //! Functions for interacting with image labels and manipulating images.
 use crate::{error::ScError, get_in_bounds};
 use fxhash::{FxHashMap, FxHashSet};
-use palette::{FromColor, Lab, Pixel, Srgb};
+use palette::{encoding, rgb::Rgb, white_point::WhitePoint, IntoColor, Lab, Srgb};
 
 /// Count the number of unique labels in a slice of superpixel labels.
 pub fn count_colors(labels: &[usize]) -> usize {
-    labels
-        .iter()
-        .copied()
-        .collect::<FxHashSet<usize>>()
-        .len()
+    labels.iter().copied().collect::<FxHashSet<usize>>().len()
 }
 
 /// Modify `output` to contain an RGB image of superpixel segments filled with
 /// the mean color of that region. The return value is the count of superpixels
 /// in the image.
-pub fn mean_colors(
+pub fn mean_colors<Wp>(
     output: &mut [u8],
     k: usize,
     labels: &[usize],
-    image: &[Lab<palette::white_point::D65, f64>],
-) -> Result<usize, ScError> {
+    image: &[Lab<Wp, f64>],
+) -> Result<usize, ScError>
+where
+    Wp: WhitePoint<f64>,
+    Lab<Wp, f64>: IntoColor<Rgb<encoding::Srgb, f64>>,
+{
     if Some(output.len()) != image.len().checked_mul(3) {
         return Err(ScError::General(
             "Mean color buffer does not match image length",
         ));
     }
 
-    let mut map = FxHashMap::<usize, (Lab<palette::white_point::D65, f64>, f64)>::default();
+    let mut map = FxHashMap::<usize, (Lab<Wp, f64>, f64)>::default();
     map.try_reserve(k)?;
 
     for (&idx, &color) in labels.iter().zip(image.iter()) {
@@ -44,14 +44,14 @@ pub fn mean_colors(
     rgb_map.try_reserve(map.len())?;
 
     rgb_map.extend(map.iter().map(|(&key, &(color, count))| {
-        let rgb: Srgb<u8> = Srgb::from_color(color / count).into_format();
+        let rgb: Srgb<u8> = (color / count).into_color().into_format();
         (key, rgb)
     }));
 
     output
         .chunks_exact_mut(3)
         .zip(labels.iter().filter_map(|a| rgb_map.get(a)))
-        .for_each(|(chunk, color)| chunk.copy_from_slice(color.as_raw()));
+        .for_each(|(chunk, color)| chunk.copy_from_slice(color.into()));
 
     Ok(map.len())
 }

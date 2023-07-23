@@ -6,7 +6,7 @@ use crate::{
 };
 
 use num_traits::ToPrimitive;
-use palette::{white_point::WhitePoint, FromColor, Lab, Pixel, Srgb};
+use palette::{cast, FromColor, Lab, Srgb};
 
 /// Information for tracking image pixels' nearest superpixel cluster and
 /// distance to that cluster during SLIC.
@@ -92,7 +92,7 @@ pub fn slic_from_bytes(
     {
         return Err(ScError::MismatchedSlicBuffer);
     }
-    let input_buffer = Srgb::from_raw_slice(image);
+    let input_buffer = cast::from_component_slice::<Srgb<u8>>(image);
     let mut input_lab: Vec<Lab<_, f64>> = Vec::new();
     input_lab.try_reserve_exact(input_buffer.len())?;
     input_lab.extend(
@@ -128,10 +128,7 @@ pub fn slic<Wp>(
     height: u32,
     iter: Option<u8>,
     image: &[Lab<Wp, f64>],
-) -> Result<Vec<usize>, ScError>
-where
-    Wp: WhitePoint,
-{
+) -> Result<Vec<usize>, ScError> {
     // Validate input parameters
     let m = m.clamp(1, 20);
     let iter = iter.unwrap_or(10);
@@ -226,6 +223,7 @@ where
             .zip(info.labels.chunks_exact(width_usize))
             .enumerate()
         {
+            #[allow(clippy::cast_precision_loss)]
             for (x, (&color, &info_label)) in row.iter().zip(info_labels).enumerate() {
                 if let Some(update) = updates.get_mut(info_label) {
                     update.data += color;
@@ -309,7 +307,7 @@ fn enforce_connectivity(
                     let neighbor_x = (x as i64) + neighbor.0;
                     let neighbor_y = (y as i64) + neighbor.1;
                     if let Some(l) =
-                        get_in_bounds(width_i, height_i, neighbor_x, neighbor_y, &new_labels)
+                        get_in_bounds(width_i, height_i, neighbor_x, neighbor_y, new_labels)
                     {
                         if *l != usize::MAX {
                             neighbor_label = *l;
@@ -367,7 +365,7 @@ fn enforce_connectivity(
         }
     }
 
-    labels.copy_from_slice(&new_labels);
+    labels.copy_from_slice(new_labels);
 
     Ok(())
 }

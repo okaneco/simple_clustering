@@ -6,7 +6,7 @@ use crate::utils::{generate_filename, save_image, Algorithm};
 
 use clap::Parser;
 
-use palette::{FromColor, Lab, Pixel, Srgb};
+use palette::{cast, FromColor, Lab, Srgb};
 use simple_clustering::image::{count_colors, mean_colors, segment_contours};
 use std::fmt::Write;
 use std::str::FromStr;
@@ -29,7 +29,7 @@ fn try_main() -> Result<(), Box<dyn std::error::Error>> {
 
     let input_image = image::open(opt.input)?.into_rgb8();
     let (width, height) = input_image.dimensions();
-    let input_buffer = Srgb::from_raw_slice(input_image.as_raw());
+    let input_buffer = cast::from_component_slice::<Srgb<u8>>(input_image.as_raw());
     let mut input_lab: Vec<Lab<_, f64>> = Vec::new();
     input_lab.try_reserve_exact(input_buffer.len())?;
     input_lab.extend(
@@ -78,9 +78,9 @@ fn try_main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    let segment_color = *Srgb::from_str(opt.segment_color.as_str())
+    let segment_color = Srgb::from_str(opt.segment_color.as_str())
         .or(Err("Segment color is invalid hex"))?
-        .as_raw();
+        .into();
 
     if !opt.no_mean {
         let num_segments = mean_colors(
